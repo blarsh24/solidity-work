@@ -7,17 +7,21 @@ import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
 contract FundMe {
     
     mapping(address => uint256) public addressToAmountFunded;
+    address[] public funders;
     address public owner;
     
     // gives ownership to deploying wallet
     constructor() public {
         owner = msg.sender;
     }
-
+    
+    // requires minimum of $50 to use this function
     function fund() public payable {
         uint256 minimumUSD = 50 * 10 ** 18;
         require(getConversionRate(msg.value) >= minimumUSD, "You need to spend more ETH!");
         addressToAmountFunded[msg.sender] += msg.value;
+        funders.push(msg.sender);
+        
     }
     
     function getVersion() public view returns (uint256){
@@ -37,13 +41,21 @@ contract FundMe {
         return ethAmountInUsd;
     }
     
+    modifier onlyOwner {
+        require(msg.sender == owner); 
+        _;
+    }
+    
     // allows owner of contract to withdraw
-    function withdraw() payable public {
-        require(msg.sender == owner);
-        msg.sender.transfer(address(this).balance); 
+    function withdraw() payable onlyOwner public {
+        msg.sender.transfer(address(this).balance);
+        for (uint256 funderIndex=0; funderIndex < funders.length; funderIndex++){
+            address funder = funders[funderIndex];
+            addressToAmountFunded[funder] = 0;
+        }
+        funders = new address[](0);
     }
     
     
 
 }
-
